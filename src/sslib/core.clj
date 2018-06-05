@@ -103,7 +103,7 @@
                                          ZoneOffset/UTC)
                 (let [d (.getNumericCellValue cell)]
                   (if (= (mod d 1) 0.0)
-                    (int d)
+                    (long d)
                     d)))
               true
               (throw (ex-info "Unreachable"
@@ -309,3 +309,45 @@
        (throw (ex-info "Failed to mapify sheet"
                        {:data (make-data nil (origin sheet)) :kind ::fail-mapify-sheet}
                        ex))))))
+
+
+;; An extractor is a function that takes a workbook and a state, where the state
+;; is {:position, :data, :message}. The extractor returns a new state.
+
+;; :position is a {:sheet, :row, :column}. :data is a map of extracted data.
+;; :message is a message for the caller.
+
+;; An extractor can call another extractor internally. This is how loops are
+;; implemented.
+
+;; Extractors work on sheets that aren't mapified.
+
+(defn get-workbook-position [workbook position]
+  (let [sheets (unwrap workbook)]
+    (if (>= (:sheet position) (count sheets))
+      nil
+      (let [rows (unwrap (nth sheets (:sheet position)))]
+        (if (>= (:row position) (count rows))
+          nil
+          (let [columns (unwrap (nth rows (:row position)))]
+            (if (>= (:column position) (count columns))
+              nil
+              (nth columns (:column position)))))))))
+
+(defn update-extractor-state [state, position-merge, message, data-updater]
+  (update (assoc state
+                 :position (merge (:position state) position-merge)
+                 :message message)
+          :data data-updater))
+
+(defn apply-extractors
+  ([extractors]
+   #(apply-extractors extractors %1 %2))
+  ([extractors workbook, state]
+   (reduce (fn [state fun]
+             (let [ret-state (fun workbook state)]
+               (if (not= (:message ret-state) :found)
+                 (throw (ex-info "Extractor returned a message other than :found"
+                                 {:state ret-state :extractor fun}))
+                 ret-state)))
+           state extractors)))
