@@ -74,6 +74,22 @@
   (or (empty? row)
       (every? empty? row)))
 
+(defmulti make-local-date-time (fn [date] (type date)))
+(defmethod make-local-date-time Double [date]
+  (make-local-date-time (DateUtil/getJavaDate date)))
+(defmethod make-local-date-time Date [date]
+  (LocalDateTime/ofInstant (.toInstant date)
+                           ZoneOffset/UTC))
+(defmethod make-local-date-time LocalDateTime [date]
+  date)
+(defmethod make-local-date-time LocalDate [date]
+  (.atStartOfDay date))
+
+(defn maybe-make-local-date-time [date]
+  (try
+    (make-local-date-time date)
+    (catch IllegalArgumentException ex
+      nil)))
 
 (defn load-cell [origin ^Cell cell]
   (let [cell-data
@@ -99,8 +115,7 @@
               (.getStringCellValue cell)
               (= e CellType/NUMERIC)
               (if (DateUtil/isCellDateFormatted cell)
-                (LocalDateTime/ofInstant (.toInstant (.getDateCellValue cell))
-                                         ZoneOffset/UTC)
+                (make-local-date-time (.getDateCellValue cell))
                 (let [d (.getNumericCellValue cell)]
                   (if (= (mod d 1) 0.0)
                     (long d)
