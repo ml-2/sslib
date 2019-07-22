@@ -1,4 +1,4 @@
-(defproject sslib "0.2.0-SNAPSHOT"
+(defproject sslib "0.3.0-SNAPSHOT"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
   :license {:name "GNU General Public License version 3"

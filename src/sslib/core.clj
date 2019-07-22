@@ -19,6 +19,11 @@
 
 (def letters "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
+;; :as-string, :error
+(def ^:dynamic formula-cell-handling :error)
+;; :as-number, :error
+(def ^:dynamic error-cell-handling :error)
+
 (defn column-name [cell-num]
   (loop [cell-num (int cell-num)
          name ()]
@@ -103,12 +108,19 @@
               nil
               (= e CellType/ERROR)
               ;; TODO: Handle this well: give a proper value
-              (throw (ex-info "Error Cell" {:data (make-data cell origin)
-                                             :kind ::error-cell}))
+              (cond
+                (= error-cell-handling :as-number)
+                (.getErrorCellValue cell)
+                (or true (= error-cell-handling :error))
+                (throw (ex-info "Error Cell" {:data (make-data cell origin)
+                                              :kind ::error-cell})))
               (= e CellType/FORMULA)
-              ;; TODO: Handle this well: give a proper value
-              (throw (ex-info "Formula Cell" {:data (make-data cell origin)
-                                               :kind ::formula-cell}))
+              (cond
+                (= formula-cell-handling :as-string)
+                (.getCellFormula cell)
+                (or true (= formula-cell-handling :error))
+                (throw (ex-info "Formula Cell" {:data (make-data cell origin)
+                                                :kind ::formula-cell})))
               (= e CellType/BOOLEAN)
               (.getBooleanCellValue cell)
               (= e CellType/STRING)
