@@ -77,7 +77,7 @@
 
 (defn null-row? [row]
   (or (empty? row)
-      (every? empty? row)))
+      (every? #(nil? (unwrap %)) row)))
 
 (defmulti make-local-date-time (fn [date] (type date)))
 (defmethod make-local-date-time Double [date]
@@ -329,9 +329,11 @@
                                 true
                                 true
                                 (recur (rest skip-checkers)))))
-                          (if keep-titles
+                          (remove-trailing
+                           #(null-row? (unwrap %))
+                           (if keep-titles
                             (unwrap sheet)
-                            (rest (unwrap sheet)))))) (origin sheet))
+                            (rest (unwrap sheet))))))) (origin sheet))
      (catch ExceptionInfo ex
        (throw (ex-info "Failed to mapify sheet"
                        {:data (make-data nil (origin sheet)) :kind ::fail-mapify-sheet}
